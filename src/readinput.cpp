@@ -10,14 +10,14 @@ using namespace std;
 int read_input ( char * filename ) {
     std::ifstream inputfile ( filename );
     string line;
-    bool dense_bool=false, sparse_bool=false, Afile_bool=false, Dfile_bool=false, Bfile_bool=false, lam_bool=false;
+    bool dense_bool=false, sparse_bool=false, Afile_bool=false, Dfile_bool=false, Bfile_bool=false;
     bool blocksize_bool=false;
 
     filenameD= ( char* ) calloc ( 100,sizeof ( char ) );
     filenameA= ( char* ) calloc ( 100,sizeof ( char ) );
     filenameB= ( char* ) calloc ( 100,sizeof ( char ) );
 
-    lambda=100;
+    lambda=0;
     blocksize=64;
 
 
@@ -42,10 +42,6 @@ int read_input ( char * filename ) {
             std::getline ( inputfile,line );
             line.copy ( filenameB,100 );
             Bfile_bool=true;
-        } else if ( line=="#Lambda" ) {
-            std::getline ( inputfile,line );
-            lambda=atof ( line.c_str() );
-            lam_bool=true;
         } else if ( line=="#BlockSize" ) {
             std::getline ( inputfile,line );
             blocksize=atoi ( line.c_str() );
@@ -94,10 +90,6 @@ int read_input ( char * filename ) {
         } else {
             printf ( "Default blocksize of %d was used to distribute matrices across processes\n", blocksize );
         }
-        if ( lam_bool )
-            printf ( "Start value of %g was used to estimate variance component lambda\n", lambda );
-        else
-            printf ( "Default start value of %g was used to estimate variance component lambda\n", lambda );
     }
     return 0;
 }
