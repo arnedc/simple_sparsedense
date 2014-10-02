@@ -514,6 +514,89 @@ void create2x2SymBlockMatrix(CSRdouble& A, CSRdouble& B, CSRdouble& T, // input
     // C.writeToFile("C.csr");
 }
 
+void create2x2BlockMatrix(CSRdouble& A, CSRdouble& B, CSRdouble& C, CSRdouble& D, // input
+                             CSRdouble& W)  // output
+{
+    assert(A.nrows==B.nrows);
+    assert(A.ncols==C.ncols);
+    assert(D.ncols==B.ncols);
+    assert(D.nrows==C.nrows);
+
+    int nrows    = A.nrows + D.nrows;
+    int ncols    = A.ncols + D.ncols;
+    int nonzeros = A.nonzeros + B.nonzeros + C.nonzeros + D.nonzeros;
+
+    int* ic   = new int[nrows + 1];
+    int* jc   = new int[nonzeros];
+    double* c = new double[nonzeros];
+
+    int nonzero_counter = 0;
+    ic[0] = nonzero_counter;
+    for (int i = 0; i < A.nrows; i++)
+    {
+        // push ith row of A
+        for (int index = A.pRows[i]; index < A.pRows[i+1]; index++)
+        {
+            int& j              = A.pCols[index];
+            double& a_ij        = A.pData[index];
+
+                c[nonzero_counter] = a_ij;
+                jc[nonzero_counter] = j;
+
+                nonzero_counter++;
+        }
+
+        // push ith row of B
+        for (int index = B.pRows[i]; index < B.pRows[i+1]; index++)
+        {
+            int& j              = B.pCols[index];
+            double& b_ij        = B.pData[index];
+
+            c[nonzero_counter] = b_ij;
+            jc[nonzero_counter] = A.ncols + j;
+
+            nonzero_counter++;
+        }
+
+        ic[i+1] = nonzero_counter;
+    }
+
+    for (int i = 0; i < D.nrows; i++)
+    {
+      // push ith row of C
+        for (int index = C.pRows[i]; index < C.pRows[i+1]; index++)
+        {
+            int& j              = C.pCols[index];
+            double& b_ij        = C.pData[index];
+
+            c[nonzero_counter] = b_ij;
+            jc[nonzero_counter] = j;
+
+            nonzero_counter++;
+        }
+        // push ith row of T
+        for (int index = D.pRows[i]; index < D.pRows[i+1]; index++)
+        {
+            int& j              = D.pCols[index];
+            double& t_ij        = D.pData[index];
+
+            c[nonzero_counter] = t_ij;
+            jc[nonzero_counter] = C.ncols + j;
+
+            nonzero_counter++;
+        }
+
+        ic[A.nrows+i+1] = nonzero_counter;
+    }
+    if (nonzero_counter != nonzeros)
+        cout << "Nonzeroes do not match, nonzero_counter= " << nonzero_counter << "; nonzeros= " << nonzeros <<endl;
+
+
+    W.make(nrows, ncols, nonzeros, ic, jc, c);
+    W.sortColumns();
+    // C.writeToFile("C.csr");
+}
+
 void create1x2BlockMatrix(CSRdouble& A, CSRdouble& B, // input
                           CSRdouble& C)  // output
 {

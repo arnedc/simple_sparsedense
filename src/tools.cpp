@@ -58,6 +58,66 @@ void dense2CSR ( double *mat, int m, int n, CSRdouble& A ) {
     A.make ( m,n,nnz,prows,pcols,pdata );
 }
 
+//converting a dense matrix (m x n) stored column-wise to CSR format at specific submatrix
+void dense2CSR_sub ( double *mat, int m, int n, int lld_mat, CSRdouble& A, int startrow, int startcol ) {
+    int i,j, nnz, rows, cols;
+    double *pdata;
+    int  *prows,*pcols;
+
+    assert(A.nrows>=startrow + m);
+    assert(A.ncols>=startcol + n);
+
+    nnz=0;
+
+    for ( i=0; i<m; ++i ) {
+        for ( j=0; j<n; ++j ) {
+            if ( abs ( * ( mat+j*lld_mat+i ) ) >1e-10 ) {
+                nnz++;
+            }
+        }
+    }
+
+    prows= new int [A.nrows + 1];
+    if ( prows == NULL ) {
+        printf ( "unable to allocate memory for prows in dense2CSR (required: %ld bytes)\n", (A.nrows+1) * sizeof ( int ) );
+        exit(1);
+    }
+    pcols= new int[nnz];
+    if ( pcols == NULL ) {
+        printf ( "unable to allocate memory for pcols in dense2CSR (required: %ld bytes)\n", nnz * sizeof ( int ) );
+        exit(1);
+    }
+    pdata= new double[nnz];
+    if ( pdata == NULL ) {
+        printf ( "unable to allocate memory for pdata in dense2CSR (required: %ld bytes)\n", nnz * sizeof ( double ) );
+        exit(1);
+    }
+
+    *prows=0;
+    nnz=0;
+    for (i=1; i<=startrow; i++) {
+        * (prows+i)=0;
+    }
+    for ( i=0; i<m; ++i ) {
+        for ( j=0; j<n; ++j ) {
+            if ( abs ( * ( mat+j*lld_mat+i ) ) >1e-10 ) { //If stored column-wise (BLAS), then moving through a row is going up by lld_mat (number of rows).
+                * ( pdata+nnz ) = * ( mat+j*lld_mat+i );
+                * ( pcols+nnz ) = j+startcol;
+                nnz++;
+            }
+        }
+        * ( prows+i+startrow+1 ) =nnz;
+    }
+    for (i=startrow+m+1; i<=A.nrows; ++i) {
+        *(prows+i)=nnz;
+    }
+    rows=A.nrows;
+    cols=A.ncols;
+    A.clear();
+    A.make ( rows,cols,nnz,prows,pcols,pdata );
+}
+
+
 //Convert CSR to column-wise stored dense matrix
 void CSR2dense ( CSRdouble& matrix,double *dense ) {
     int i, row;

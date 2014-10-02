@@ -23,6 +23,14 @@ rand.csr
 #SparseFileB
 Xmatrix.csr
 
+/Do you want B to be treated as sparse (1) or dense (0) (optional, default=0)
+#Bsparse
+1
+
 /size of the blocks in which the matrix is distributed (optional, default=64)
 #BlockSize
 64
+
+/Filename where C will be stored in sparse CSR format
+#OutputFileSparseC
+Cmatrix.csr

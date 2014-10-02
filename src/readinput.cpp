@@ -12,13 +12,17 @@ int read_input ( char * filename ) {
     string line;
     bool dense_bool=false, sparse_bool=false, Afile_bool=false, Dfile_bool=false, Bfile_bool=false;
     bool blocksize_bool=false;
+    int Bassparse_bool;
 
     filenameD= ( char* ) calloc ( 100,sizeof ( char ) );
     filenameA= ( char* ) calloc ( 100,sizeof ( char ) );
     filenameB= ( char* ) calloc ( 100,sizeof ( char ) );
+    filenameC= ( char* ) calloc ( 100,sizeof ( char ) );
 
     lambda=0;
     blocksize=64;
+    printsparseC_bool=false;
+    Bassparse_bool=0;
 
 
     while ( std::getline ( inputfile,line ) ) {
@@ -46,6 +50,13 @@ int read_input ( char * filename ) {
             std::getline ( inputfile,line );
             blocksize=atoi ( line.c_str() );
             blocksize_bool=true;
+	    } else if ( line=="#Bsparse" ) {
+            std::getline ( inputfile,line );
+            Bassparse_bool=atoi ( line.c_str() );
+        } else if ( line=="#OutputFileSparseC" ) {
+            std::getline ( inputfile,line );
+            line.copy ( filenameC,100 );;
+            printsparseC_bool=true;
         } else if ( line[0]=='/' || line.size() ==0 ) {}
         else {
             printf ( "Unknown parameter in inputfile, the following line was ignored: \n" );
@@ -90,6 +101,12 @@ int read_input ( char * filename ) {
         } else {
             printf ( "Default blocksize of %d was used to distribute matrices across processes\n", blocksize );
         }
+        if ( printsparseC_bool )
+	  printf("Sparse matrix C will be written in CSR format to text file %s \n", filenameC);
+	if ( Bassparse_bool )
+	  printf("B will be treated as a sparse matrix \n");
+	else
+	  printf("B will be treated as a dense matrix\n");
     }
     return 0;
 }

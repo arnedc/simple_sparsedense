@@ -14,6 +14,9 @@ void writeSolution(int number_of_solution_vectors, int n, double* X);
 void create2x2SymBlockMatrix(CSRdouble& A, CSRdouble& B, CSRdouble& T, // input
                              CSRdouble& C); // output
 
+void create2x2BlockMatrix(CSRdouble& A, CSRdouble& B, CSRdouble& C, CSRdouble& D, // input
+                             CSRdouble& W); // output 
+
 void create1x2BlockMatrix(CSRdouble& A, CSRdouble& B, // input
                              CSRdouble& C);  // output
 

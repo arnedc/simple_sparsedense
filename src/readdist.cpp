@@ -6,8 +6,6 @@
 #include <cassert>
 
 extern "C" {
-    int MPI_Ssend(void*, int, MPI_Datatype, int, int, MPI_Comm);
-    int MPI_Recv(void*, int, MPI_Datatype, int, int, MPI_Comm, MPI_Status *);
     int MPI_Get_count(MPI_Status *, MPI_Datatype, int *);
     void descinit_ ( int*, int*, int*, int*, int*, int*, int*, int*, int*, int* );
     void blacs_barrier_ ( int*, char* );
@@ -16,12 +14,11 @@ extern "C" {
                    int *jb, int *descb, double *beta, double *c, int *ic, int *jc, int *descc );
 }
 
-int read_in_BD ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j ) {
+int read_in_BD ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j, CSRdouble& Btsparse ) {
 
     FILE *fD;
     int ni, i,j, info;
     int nstrips, pcol, colcur,rowcur;
-    CSRdouble Btsparse;
 
     MPI_Status status;
     
@@ -167,8 +164,9 @@ int read_in_BD ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j ) {
     }
     else {
             
-        CSRdouble Btsparse;
         Btsparse.loadFromFile(filenameB);
+	assert(Btsparse.nrows == Adim);
+	assert(Btsparse.ncols == Ddim);
 	Btsparse.transposeIt(1);
 
         // For each process row i BT_i is created which is also sent to processes in column i to become B_j.
@@ -192,18 +190,18 @@ int read_in_BD ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j ) {
                 int *curpos, rankproc;
                 rankproc= blacs_pnum_ (&ICTXT2D, &rowproc,&colproc);
 
-                MPI_Ssend ( & ( BT_i.nonzeros ),1, MPI_INT,rankproc,rankproc,MPI_COMM_WORLD );
-                MPI_Ssend ( & ( BT_i.pRows[0] ),BT_i.nrows + 1, MPI_INT,rankproc,rankproc+size,MPI_COMM_WORLD );
-                MPI_Ssend ( & ( BT_i.pCols[0] ),BT_i.nonzeros, MPI_INT,rankproc,rankproc+2*size,MPI_COMM_WORLD );
-                MPI_Ssend ( & ( BT_i.pData[0] ),BT_i.nonzeros, MPI_DOUBLE,rankproc,rankproc+3*size,MPI_COMM_WORLD );
+                MPI_Send ( & ( BT_i.nonzeros ),1, MPI_INT,rankproc,rankproc,MPI_COMM_WORLD );
+                MPI_Send ( & ( BT_i.pRows[0] ),BT_i.nrows + 1, MPI_INT,rankproc,rankproc+size,MPI_COMM_WORLD );
+                MPI_Send ( & ( BT_i.pCols[0] ),BT_i.nonzeros, MPI_INT,rankproc,rankproc+2*size,MPI_COMM_WORLD );
+                MPI_Send ( & ( BT_i.pData[0] ),BT_i.nonzeros, MPI_DOUBLE,rankproc,rankproc+3*size,MPI_COMM_WORLD );
 
                 //printf("BT_i's sent to processor %d\n",rankproc);
 
                 rankproc= blacs_pnum_ (&ICTXT2D, &colproc,&rowproc);
-                MPI_Ssend ( & ( BT_i.nonzeros ),1, MPI_INT,rankproc,rankproc+4*size,MPI_COMM_WORLD );
-                MPI_Ssend ( & ( BT_i.pRows[0] ),BT_i.nrows + 1, MPI_INT,rankproc,rankproc+5*size,MPI_COMM_WORLD );
-                MPI_Ssend ( & ( BT_i.pCols[0] ),BT_i.nonzeros, MPI_INT,rankproc,rankproc+6*size,MPI_COMM_WORLD );
-                MPI_Ssend ( & ( BT_i.pData[0] ),BT_i.nonzeros, MPI_DOUBLE,rankproc,rankproc+7*size,MPI_COMM_WORLD );
+                MPI_Send ( & ( BT_i.nonzeros ),1, MPI_INT,rankproc,rankproc+4*size,MPI_COMM_WORLD );
+                MPI_Send ( & ( BT_i.pRows[0] ),BT_i.nrows + 1, MPI_INT,rankproc,rankproc+5*size,MPI_COMM_WORLD );
+                MPI_Send ( & ( BT_i.pCols[0] ),BT_i.nonzeros, MPI_INT,rankproc,rankproc+6*size,MPI_COMM_WORLD );
+                MPI_Send ( & ( BT_i.pData[0] ),BT_i.nonzeros, MPI_DOUBLE,rankproc,rankproc+7*size,MPI_COMM_WORLD );
 
                 //printf("B_j's sent to processor %d\n",rankproc);
             }
