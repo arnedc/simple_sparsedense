@@ -227,6 +227,9 @@ int main(int argc, char **argv) {
                 //Dmat.writeToFile("D_sparse.csr");
                 Dmat.reduceSymmetric();
                 Btsparse.transposeIt(1);
+		Dmat.nrows=Ddim;
+		Dmat.ncols=Ddim;
+		Dmat.pRows=(int *) realloc(Dmat.pRows,(Ddim+1) * sizeof(int));
                 create2x2SymBlockMatrix(Asparse,Btsparse, Dmat, Csparse);
                 Btsparse.clear();
                 Dmat.clear();

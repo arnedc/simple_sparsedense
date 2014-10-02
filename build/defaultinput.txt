@@ -25,11 +25,11 @@ B_sparse.csr
 
 /Do you want B to be treated as sparse (1) or dense (0) (optional, default=0)
 #Bsparse
-1
+0
 
 /size of the blocks in which the matrix is distributed (optional, default=64)
 #BlockSize
-2
+3
 
 #OutputFileSparseC
 C_sparse.csr
