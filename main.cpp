@@ -15,7 +15,6 @@ extern "C" {
     int MPI_Dims_create(int, int, int *);
     int MPI_Barrier( MPI_Comm comm );
     void blacs_pinfo_ ( int *mypnum, int *nprocs );
-    void blacs_setup_ ( int *mypnum, int *nprocs );
     void blacs_get_ ( int *ConTxt, int *what, int *val );
     void blacs_gridinit_ ( int *ConTxt, char *order, int *nprow, int *npcol );
     void blacs_gridexit_ ( int *ConTxt );
@@ -43,8 +42,8 @@ int Bassparse_bool;
 
 int main(int argc, char **argv) {
     int info, i, j, pcol;
-    double *D;
-    int *DESCD;
+    double *D, *AB_sol, *InvD_T_Block, *XSrow;
+    int *DESCD, *DESCAB_sol, *DESCXSROW;
     CSRdouble BT_i, B_j;
     CSRdouble Asparse, Btsparse;
 
@@ -222,6 +221,7 @@ int main(int argc, char **argv) {
                         /*MPI_Get_count(&status, MPI_DOUBLE, &count);
                         printf("Process 0 received %d elements of process %d\n",count,i);*/
                         Dmat.addBCSR ( Dblock );
+			Dblock.clear();
                     }
                 }
                 //Dmat.writeToFile("D_sparse.csr");
@@ -241,8 +241,6 @@ int main(int argc, char **argv) {
         blacs_barrier_(&ICTXT2D,"A");
 
         //AB_sol will contain the solution of A*X=B, distributed across the process rows. Processes in the same process row possess the same part of AB_sol
-        double * AB_sol;
-        int * DESCAB_sol;
         DESCAB_sol= ( int* ) malloc ( DLEN_ * sizeof ( int ) );
         if ( DESCAB_sol==NULL ) {
             printf ( "unable to allocate memory for descriptor for AB_sol\n" );
@@ -260,6 +258,12 @@ int main(int argc, char **argv) {
         // Each process calculates the Schur complement of the part of D at its disposal. (see src/schur.cpp)
         // The solution of A * X = B_j is stored in AB_sol (= A^-1 * B_j)
         make_Sij_parallel_denseB ( Asparse, BT_i, B_j, D, lld_D, AB_sol );
+	
+	if(iam !=0)
+	  Asparse.clear();
+	
+	BT_i.clear();
+	B_j.clear();
 
         blacs_barrier_ ( &ICTXT2D,"ALL" );
 
@@ -281,7 +285,7 @@ int main(int argc, char **argv) {
 
         blacs_barrier_(&ICTXT2D,"A");
 
-        double* InvD_T_Block = ( double* ) calloc ( Dblocks * blocksize + Adim ,sizeof ( double ) );
+        InvD_T_Block = ( double* ) calloc ( Dblocks * blocksize + Adim ,sizeof ( double ) );
 
         //Diagonal elements of the (1,1) block of C^-1 are still distributed and here they are gathered in InvD_T_Block in the root process.
         if(*position == pcol) {
@@ -302,6 +306,15 @@ int main(int argc, char **argv) {
                 }
             }
         }
+        
+        if(position != NULL){
+	  free(position);
+	  position=NULL;
+	}
+	if(dims != NULL){
+	  free(dims);
+	  dims=NULL;
+	}
 
         //Only the root process performs a selected inversion of A.
         if (iam==0) {
@@ -336,8 +349,7 @@ int main(int argc, char **argv) {
 
         // To minimize memory usage, and because only the diagonal elements of the inverse are needed, X' * S is calculated row by row
         // the diagonal element is calculated as the dot product of this row and the corresponding column of X. (X is solution of AX=B)
-        double* XSrow= ( double* ) calloc ( Dcols * blocksize,sizeof ( double ) );
-        int * DESCXSROW;
+        XSrow= ( double* ) calloc ( Dcols * blocksize,sizeof ( double ) );
         DESCXSROW= ( int* ) malloc ( DLEN_ * sizeof ( int ) );
         if ( DESCXSROW==NULL ) {
             printf ( "unable to allocate memory for descriptor for AB_sol\n" );
@@ -358,6 +370,31 @@ int main(int argc, char **argv) {
             pddot_(&Ddim,InvD_T_Block+i-1,AB_sol,&i,&i_one,DESCAB_sol,&Adim,XSrow,&i_one,&i_one,DESCXSROW,&i_one);
         }
         blacs_barrier_(&ICTXT2D,"A");
+	
+	if(D!=NULL){
+	  free(D);
+	  D=NULL;
+	}
+	if(AB_sol!=NULL){
+	  free(AB_sol);
+	  AB_sol=NULL;
+	}
+	if(XSrow !=NULL){
+	  free(XSrow);
+	  XSrow=NULL;
+	}
+	if(DESCD!=NULL){
+	  free(DESCD);
+	  DESCD=NULL;
+	}
+	if(DESCAB_sol!=NULL){
+	  free(DESCAB_sol);
+	  DESCAB_sol=NULL;
+	}
+	if(DESCXSROW!=NULL){
+	  free(DESCXSROW);
+	  DESCXSROW=NULL;
+	}
 
         //Only in the root process we add the diagonal elements of A^-1
         if (iam ==0) {
@@ -365,8 +402,14 @@ int main(int argc, char **argv) {
                 j=Asparse.pRows[i];
                 *(InvD_T_Block+i) += Asparse.pData[j];
             }
+            Asparse.clear();
             printdense ( Adim+Ddim,1,InvD_T_Block,"diag_inverse_C_parallel.txt" );
         }
+        
+        if(InvD_T_Block !=NULL){
+	  free(InvD_T_Block);
+	  InvD_T_Block=NULL;
+	}
 
         blacs_barrier_(&ICTXT2D,"A");
 	blacs_gridexit_(&ICTXT2D);

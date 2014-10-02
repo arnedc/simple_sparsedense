@@ -7,11 +7,8 @@
 
 extern "C" {
     int MPI_Get_count(MPI_Status *, MPI_Datatype, int *);
-    void descinit_ ( int*, int*, int*, int*, int*, int*, int*, int*, int*, int* );
     void blacs_barrier_ ( int*, char* );
     int blacs_pnum_ ( int *ConTxt, int *prow, int *pcol );
-    void pdgemm_ ( char *transa, char *transb, int *m, int *n, int *k, double *alpha, double *a, int *ia, int *ja, int *desca, double *b, int *ib,
-                   int *jb, int *descb, double *beta, double *c, int *ic, int *jc, int *descc );
 }
 
 int read_in_BD ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j, CSRdouble& Btsparse ) {
@@ -105,6 +102,8 @@ int read_in_BD ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j, CS
 
         blacs_barrier_ ( &ICTXT2D,"A" );
     }
+    
+    fclose(fD);
 
         // End of read-in
 

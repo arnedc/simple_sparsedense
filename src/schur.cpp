@@ -59,84 +59,96 @@ int make_Sij_sparse_parallel(CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, doub
  * @return int
  **/
 int make_Sij_parallel_denseB(CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, double * T_ij, int lld_T, double * AB_sol_out) {
-  
-  double *BT_i_dense, *AB_sol;
-  
-  assert(A.nrows == BT_i.ncols);
-  
-  if(Bassparse_bool){
-    CSRdouble AB_sol, W, unit, zero;
-    int ori_cols;
-    
-    ori_cols=B_j.ncols;
-    
-    if(B_j.ncols < B_j.nrows){
-	B_j.ncols=B_j.nrows;
+
+    double *BT_i_dense;
+
+    assert(A.nrows == BT_i.ncols);
+
+    if(Bassparse_bool) {
+        CSRdouble AB_sol, W, unit, zero;
+        int ori_cols;
+
+        ori_cols=B_j.ncols;
+
+        if(B_j.ncols < B_j.nrows) {
+            B_j.ncols=B_j.nrows;
+        }
+        zero.nrows=B_j.ncols;
+        zero.ncols=B_j.ncols;
+        zero.nonzeros=0;
+        zero.pCols=new int[1];
+        zero.pData=new double[1];
+        zero.pRows=new int[zero.nrows+1];
+        unit.nrows=B_j.ncols;
+        unit.ncols=A.ncols;
+        unit.nonzeros=A.ncols;
+        unit.pCols=new int[unit.ncols];
+        unit.pData=new double[unit.ncols];
+        unit.pRows=new int[unit.nrows +1];
+        for (int i =0; i<unit.ncols; ++i) {
+            unit.pData[i]=-1.0;
+            unit.pCols[i]=i;
+            unit.pRows[i]=i;
+            zero.pRows[i]=0;
+        }
+        for (int i=unit.ncols; i<=unit.nrows; ++i) {
+            unit.pRows[i]=unit.ncols;
+            zero.pRows[i]=0;
+        }
+        zero.pData[0]=0;
+        zero.pCols[0]=0;
+
+        create2x2BlockMatrix(A, B_j, unit, zero, W);
+
+        unit.clear();
+        zero.clear();
+
+        AB_sol.nrows=B_j.ncols;
+        AB_sol.ncols=B_j.ncols;
+
+        calculateSchurComplement( W, 11, AB_sol);
+
+        W.clear();
+
+        AB_sol.nrows=ori_cols;
+        AB_sol.pRows= (int *) realloc(AB_sol.pRows, (ori_cols +1) * sizeof(int) );
+
+        B_j.ncols=ori_cols;
+
+        CSR2dense(AB_sol,AB_sol_out);
+
+        AB_sol.clear();
+
     }
-    zero.nrows=B_j.ncols;
-    zero.ncols=B_j.ncols;
-    zero.nonzeros=0;
-    zero.pCols=new int[1];
-    zero.pData=new double[1];
-    zero.pRows=new int[zero.nrows+1];
-    unit.nrows=B_j.ncols;
-    unit.ncols=A.ncols;
-    unit.nonzeros=A.ncols;
-    unit.pCols=new int[unit.ncols];
-    unit.pData=new double[unit.ncols];
-    unit.pRows=new int[unit.nrows +1];
-    for (int i =0; i<unit.ncols;++i){
-      unit.pData[i]=-1.0;
-      unit.pCols[i]=i;
-      unit.pRows[i]=i;
-      zero.pRows[i]=0;
+    else {
+        double *B_j_dense;
+
+        B_j_dense=(double *) calloc(B_j.nrows * B_j.ncols,sizeof(double));
+
+        CSR2dense(B_j,B_j_dense);
+
+        solveSystem(A, AB_sol_out,B_j_dense, 2, B_j.ncols);
+
+        if(B_j_dense!=NULL) {
+            free(B_j_dense);
+            B_j_dense=NULL;
+        }
+
+        //printf("Processor %d finished solving system AX=B\n",iam);
+
     }
-    for (int i=unit.ncols;i<=unit.nrows;++i){
-      unit.pRows[i]=unit.ncols;
-      zero.pRows[i]=0;
-    }
-    zero.pData[0]=0;
-    zero.pCols[0]=0;
-    
-    create2x2BlockMatrix(A, B_j, unit, zero, W);
-    
-    
-    AB_sol.nrows=B_j.ncols;
-    AB_sol.ncols=B_j.ncols;
-    
-    calculateSchurComplement( W, 11, AB_sol);
-    
-    AB_sol.nrows=ori_cols;
-    AB_sol.pRows= (int *) realloc(AB_sol.pRows, (ori_cols +1) * sizeof(int) );
-    
-    B_j.ncols=ori_cols;
-    
-    CSR2dense(AB_sol,AB_sol_out);
-    
-  }
-  else{
-    double *B_j_dense;
-  
-    B_j_dense=(double *) calloc(B_j.nrows * B_j.ncols,sizeof(double));
 
-    CSR2dense(B_j,B_j_dense);
-
-    solveSystem(A, AB_sol_out,B_j_dense, 2, B_j.ncols);
-    
-    free(B_j_dense);
-
-    //printf("Processor %d finished solving system AX=B\n",iam);
-
-  }
-  
-  BT_i_dense=(double *) calloc(BT_i.nrows * BT_i.ncols,sizeof(double));
+    BT_i_dense=(double *) calloc(BT_i.nrows * BT_i.ncols,sizeof(double));
 
     CSR2dense(BT_i,BT_i_dense);
-    
+
     dgemm_("N","N",&(BT_i.nrows),&(B_j.ncols),&(BT_i.ncols),&d_negone,BT_i_dense,&(BT_i.nrows),
            AB_sol_out,&(A.nrows),&d_one,T_ij,&lld_T);
-    
-    free(BT_i_dense);
+
+    if(BT_i_dense!=NULL) {
+        free(BT_i_dense);
+        BT_i_dense=NULL;
+    }
 
     return 0;
 }
