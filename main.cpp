@@ -159,7 +159,7 @@ int main(int argc, char **argv) {
 
         blacs_barrier_ ( &ICTXT2D,"ALL" );
         if (iam==0)
-            printf ( "Matrices B & D set up\n" );
+            printf ( "Matrices B & D read in\n" );
 
         //Now every process has to read in the sparse matrix A
 
@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
                     /*MPI_Get_count(&status, MPI_INT, &count);
                     printf("Process 0 received %d elements of process %d\n",count,i);*/
                     if(nonzeroes>0) {
-                        printf("Nonzeroes : %d\n ",nonzeroes);
+                        //printf("Nonzeroes : %d\n ",nonzeroes);
                         Dblock.allocate ( Dblocks * blocksize,Dblocks * blocksize,nonzeroes );
                         MPI_Recv ( & ( Dblock.pRows[0] ), Dblocks * blocksize + 1, MPI_INT,i,i+size,MPI_COMM_WORLD,&status );
                         /*MPI_Get_count(&status, MPI_INT, &count);
@@ -225,13 +225,14 @@ int main(int argc, char **argv) {
                     }
                 }
                 //Dmat.writeToFile("D_sparse.csr");
+                Dmat.nrows=Ddim;
+		Dmat.ncols=Ddim;
+		Dmat.pRows=(int *) realloc(Dmat.pRows,(Ddim+1) * sizeof(int));
                 printf("Number of nonzeroes in D: %d\n",Dmat.nonzeros);
                 Dmat.reduceSymmetric();
 		
                 Btsparse.transposeIt(1);
-		Dmat.nrows=Ddim;
-		Dmat.ncols=Ddim;
-		Dmat.pRows=(int *) realloc(Dmat.pRows,(Ddim+1) * sizeof(int));
+		
                 create2x2SymBlockMatrix(Asparse,Btsparse, Dmat, Csparse);
                 Btsparse.clear();
                 Dmat.clear();
