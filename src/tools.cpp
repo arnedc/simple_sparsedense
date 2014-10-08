@@ -32,7 +32,7 @@ void dense2CSR ( double *mat, int m, int n, CSRdouble& A ) {
 
     for ( i=0; i<m; ++i ) {
         for ( j=0; j<n; ++j ) {
-            if ( abs ( * ( mat+i*n+j ) ) >1e-10 ) {
+            if ( fabs ( * ( mat+i*n+j ) ) >1e-10 ) {
                 nnz++;
             }
         }
@@ -46,7 +46,7 @@ void dense2CSR ( double *mat, int m, int n, CSRdouble& A ) {
     nnz=0;
     for ( i=0; i<m; ++i ) {
         for ( j=0; j<n; ++j ) {
-            if ( abs ( * ( mat+j*m+i ) ) >1e-10 ) { //If stored column-wise (BLAS), then moving through a row is going up by m (number of rows).
+            if ( fabs ( * ( mat+j*m+i ) ) >1e-10 ) { //If stored column-wise (BLAS), then moving through a row is going up by m (number of rows).
                 * ( pdata+nnz ) =* ( mat+j*m+i );
                 * ( pcols+nnz ) =j;
                 nnz++;
@@ -71,7 +71,7 @@ void dense2CSR_sub ( double *mat, int m, int n, int lld_mat, CSRdouble& A, int s
 
     for ( i=0; i<m; ++i ) {
         for ( j=0; j<n; ++j ) {
-            if ( abs ( * ( mat+j*lld_mat+i ) ) >1e-10 ) {
+            if ( fabs ( * ( mat+j*lld_mat+i ) ) >1e-10 ) {
                 nnz++;
             }
         }
@@ -100,7 +100,7 @@ void dense2CSR_sub ( double *mat, int m, int n, int lld_mat, CSRdouble& A, int s
     }
     for ( i=0; i<m; ++i ) {
         for ( j=0; j<n; ++j ) {
-            if ( abs ( * ( mat+j*lld_mat+i ) ) >1e-10 ) { //If stored column-wise (BLAS), then moving through a row is going up by lld_mat (number of rows).
+            if ( fabs ( * ( mat+j*lld_mat+i ) ) >1e-10 ) { //If stored column-wise (BLAS), then moving through a row is going up by lld_mat (number of rows).
                 * ( pdata+nnz ) = * ( mat+j*lld_mat+i );
                 * ( pcols+nnz ) = j+startcol;
                 nnz++;
@@ -159,7 +159,7 @@ void mult_CSRA_denseB_storeCSRC ( CSRdouble& A, double *B, bool trans,
                 j = A.pCols[i];
                 cij += A.pData[i] * * ( B + j + A.ncols * col ) ;
             }
-            if ( abs ( cij ) >1e-10 ) {
+            if ( fabs ( cij ) >1e-10 ) {
                 C_nnz++;
                 Ccols.push_back ( col );
                 Cdata.push_back ( cij );
@@ -218,7 +218,7 @@ void mult_colsA_colsC ( CSRdouble& A, double *B, int lld_B, int Acolstart, int A
                 if ( j>=Acolstart && j<Acolstart+Ancols )
                     cij += A.pData[i] * * ( B + col-Ccolstart + lld_B * ( j-Acolstart ) ) ;
             }
-            if ( abs ( cij ) >1e-10 ) {
+            if ( fabs ( cij ) >1e-10 ) {
                 C_nnz++;
                 Ccols.push_back ( col );
                 Cdata.push_back ( cij );

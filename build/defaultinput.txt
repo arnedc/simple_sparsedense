@@ -29,7 +29,7 @@ B_sparse.csr
 
 /size of the blocks in which the matrix is distributed (optional, default=64)
 #BlockSize
-3
+2
 
 #OutputFileSparseC
 C_sparse.csr

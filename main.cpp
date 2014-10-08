@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
         if (iam==0)
             printf ( "Matrices B & D set up\n" );
 
-        //Now every matrix has to read in the sparse matrix A
+        //Now every process has to read in the sparse matrix A
 
         Asparse.loadFromFile(filenameA);
 	assert(Asparse.nrows == Adim);
@@ -225,7 +225,9 @@ int main(int argc, char **argv) {
                     }
                 }
                 //Dmat.writeToFile("D_sparse.csr");
+                printf("Number of nonzeroes in D: %d\n",Dmat.nonzeros);
                 Dmat.reduceSymmetric();
+		
                 Btsparse.transposeIt(1);
 		Dmat.nrows=Ddim;
 		Dmat.ncols=Ddim;

@@ -83,13 +83,13 @@ void solveSystem(CSRdouble& A, double* X, double* B, int pardiso_mtype, int numb
 
 void calculateSchurComplement(CSRdouble& A, int pardiso_mtype, CSRdouble& S)
 {
-    cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
+    /*cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
     cout << "@@@ C A L C U L A T I N G     S C H U R - C O M P L M. @@@" << endl;
-    cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
+    cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;*/
 
 
     // initialize pardiso and forward to it minimum number of necessary parameters
-    int pardiso_message_level = 1;
+    int pardiso_message_level = 0;
 
     ParDiSO pardiso(pardiso_mtype, pardiso_message_level);
 
@@ -110,13 +110,13 @@ void calculateSchurComplement(CSRdouble& A, int pardiso_mtype, CSRdouble& S)
     double schurTime  = 0.0;
     timing secs;
 
-    cout << "number of perturbed pivots = " << pardiso.iparm[14] << endl;
+    //cout << "number of perturbed pivots = " << pardiso.iparm[14] << endl;
 
     secs.tick(schurTime);
     pardiso.makeSchurComplement(A, S);
     secs.tack(schurTime);
 
-    cout << "number of perturbed pivots = " << pardiso.iparm[14] << endl;
+    //cout << "number of perturbed pivots = " << pardiso.iparm[14] << endl;
 }
 
 void errorReport(int number_of_rhs, CSRdouble& A, double* b, double* x)
@@ -509,7 +509,7 @@ void create2x2SymBlockMatrix(CSRdouble& A, CSRdouble& B, CSRdouble& T, // input
         cout << "Nonzeroes do not match, nonzero_counter= " << nonzero_counter << "; nonzeros= " << nonzeros <<endl;
 
 
-    C.make(nrows, ncols, nonzeros, ic, jc, c);
+    C.make(nrows, ncols, nonzero_counter, ic, jc, c);
     C.sortColumns();
     // C.writeToFile("C.csr");
 }

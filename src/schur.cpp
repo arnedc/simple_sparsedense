@@ -7,7 +7,6 @@
 #include "ParDiSO.hpp"
 #include "RealMath.hpp"
 #include <cassert>
-#include "shared_var.h"
 
 extern "C" {
     void dgemm_ ( const char *transa, const char *transb, const int *m, const int *n, const int *k, const double *alpha, const double *a, const int *lda, const double *b, const int *ldb, const double *beta, double *c, const int *ldc );
@@ -126,7 +125,8 @@ int make_Sij_parallel_denseB(CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, doub
         B_j_dense=(double *) calloc(B_j.nrows * B_j.ncols,sizeof(double));
 
         CSR2dense(B_j,B_j_dense);
-
+	if(iam==0)
+	  printf("Solving systems AX_j = B_j on all processes\n");
         solveSystem(A, AB_sol_out,B_j_dense, 2, B_j.ncols);
 
         if(B_j_dense!=NULL) {
