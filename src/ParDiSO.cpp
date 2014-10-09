@@ -433,7 +433,7 @@ void ParDiSO::findInverseOfA(CSRdouble& A)
                  &error);
  
   error_();
-  phase     = 12;
+  /*phase     = 12;
 
   printf("Matrix checked by PARDISO\n");
 
@@ -463,7 +463,7 @@ void ParDiSO::findInverseOfA(CSRdouble& A)
   error_();
   printf("Matrix factorized by PARDISO\n");
   
-  
+  */
   phase     = -22;
   iparm[36] = 1;   // do not overwrite internal factor L
   

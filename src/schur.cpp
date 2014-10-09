@@ -7,6 +7,7 @@
 #include "ParDiSO.hpp"
 #include "RealMath.hpp"
 #include <cassert>
+#include "timing.hpp"
 
 extern "C" {
     void dgemm_ ( const char *transa, const char *transb, const int *m, const int *n, const int *k, const double *alpha, const double *a, const int *lda, const double *b, const int *ldb, const double *beta, double *c, const int *ldc );
@@ -60,6 +61,9 @@ int make_Sij_sparse_parallel(CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, doub
 int make_Sij_parallel_denseB(CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, double * T_ij, int lld_T, double * AB_sol_out) {
 
     double *BT_i_dense;
+    
+    timing secs;
+    double MultTime       = 0.0;
 
     assert(A.nrows == BT_i.ncols);
 
@@ -141,9 +145,14 @@ int make_Sij_parallel_denseB(CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, doub
     BT_i_dense=(double *) calloc(BT_i.nrows * BT_i.ncols,sizeof(double));
 
     CSR2dense(BT_i,BT_i_dense);
-
+    
+    secs.tick(MultTime);
     dgemm_("N","N",&(BT_i.nrows),&(B_j.ncols),&(BT_i.ncols),&d_negone,BT_i_dense,&(BT_i.nrows),
            AB_sol_out,&(A.nrows),&d_one,T_ij,&lld_T);
+    secs.tack(MultTime);
+    
+    if(iam==0)
+      cout << "Time for multiplying BT_i and Y_j: " << MultTime * 0.001 << " sec" << endl;
 
     if(BT_i_dense!=NULL) {
         free(BT_i_dense);

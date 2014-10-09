@@ -39,6 +39,7 @@ double lambda;
 bool printsparseC_bool;
 MPI_Status status;
 int Bassparse_bool;
+ParDiSO pardiso_var(-2,0);
 
 int main(int argc, char **argv) {
     int info, i, j, pcol;
@@ -263,10 +264,13 @@ int main(int argc, char **argv) {
 
         // Each process calculates the Schur complement of the part of D at its disposal. (see src/schur.cpp)
         // The solution of A * X = B_j is stored in AB_sol (= A^-1 * B_j)
+	//ParDiSO pardiso_var(-2, 1);
         make_Sij_parallel_denseB ( Asparse, BT_i, B_j, D, lld_D, AB_sol );
 	
-	if(iam !=0)
+	if(iam !=0){
 	  Asparse.clear();
+	  pardiso_var.clear();
+	}
 	
 	BT_i.clear();
 	B_j.clear();
@@ -325,11 +329,11 @@ int main(int argc, char **argv) {
         //Only the root process performs a selected inversion of A.
         if (iam==0) {
 
-            int pardiso_message_level = 1;
+            /*int pardiso_message_level = 1;
 
             int pardiso_mtype=-2;
 
-            ParDiSO pardiso ( pardiso_mtype, pardiso_message_level );
+            ParDiSO pardiso ( pardiso_mtype, pardiso_message_level );*/
             int number_of_processors = 1;
             char* var = getenv("OMP_NUM_THREADS");
             if(var != NULL)
@@ -339,15 +343,15 @@ int main(int argc, char **argv) {
                 exit(1);
             }
 
-            pardiso.iparm[2]  = 2;
-            pardiso.iparm[3]  = number_of_processors;
-            pardiso.iparm[8]  = 0;
-            pardiso.iparm[11] = 1;
-            pardiso.iparm[13]  = 0;
-            pardiso.iparm[28]  = 0;
+            pardiso_var.iparm[2]  = 2;
+            pardiso_var.iparm[3]  = number_of_processors;
+            pardiso_var.iparm[8]  = 0;
+            pardiso_var.iparm[11] = 1;
+            pardiso_var.iparm[13]  = 0;
+            pardiso_var.iparm[28]  = 0;
 
             //This function calculates the factorisation of A once again so this might be optimized.
-            pardiso.findInverseOfA ( Asparse );
+            pardiso_var.findInverseOfA ( Asparse );
 
             printf("Processor %d inverted matrix A\n",iam);
         }

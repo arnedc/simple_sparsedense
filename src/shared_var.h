@@ -34,6 +34,7 @@ typedef struct MPI_Status {
 } MPI_Status;
 
 class CSRdouble;
+class ParDiSO;
 
 extern "C"{
       int MPI_Send(void*, int, MPI_Datatype, int, int, MPI_Comm);
@@ -65,5 +66,6 @@ extern double lambda;
 extern bool printsparseC_bool;
 extern int Bassparse_bool;
 extern MPI_Status status;
+extern ParDiSO pardiso_var;
 
 #endif
