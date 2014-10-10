@@ -3,6 +3,7 @@
 #include "ParDiSO.hpp"
 #include "CSRdouble.hpp"
 #include "CSRcomplex.hpp"
+#include "shared_var.h"
 // =============
 
 
@@ -145,6 +146,8 @@ ParDiSO::ParDiSO(int pardiso_mtype, int pardiso_msglvl)
   // --------------------------------------------------------------------
   mtype  = pardiso_mtype;
   msglvl = pardiso_msglvl;
+  if(iam == 0)
+    msglvl = 1; // fabio hard-coded
   solver = 0;
 
   maxfct = 1;

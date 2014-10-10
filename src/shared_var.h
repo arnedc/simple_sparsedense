@@ -37,9 +37,10 @@ class CSRdouble;
 class ParDiSO;
 
 extern "C"{
-      int MPI_Send(void*, int, MPI_Datatype, int, int, MPI_Comm);
+    int MPI_Send(void*, int, MPI_Datatype, int, int, MPI_Comm);
     int MPI_Recv(void*, int, MPI_Datatype, int, int, MPI_Comm, MPI_Status *);
-  void blacs_barrier_ ( int*, char* );
+    void blacs_barrier_ ( int*, char* );
+    double MPI_Wtime();
 }
 
 void printdense ( int m, int n, double *mat, char *filename );
@@ -69,3 +70,4 @@ extern MPI_Status status;
 extern ParDiSO pardiso_var;
 
 #endif
+

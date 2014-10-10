@@ -7,6 +7,7 @@
 #include "src/ParDiSO.hpp"
 #include "src/RealMath.hpp"
 #include "src/smat.h"
+#include "src/timing.hpp"
 #include <cassert>
 
 extern "C" {
@@ -41,6 +42,18 @@ MPI_Status status;
 int Bassparse_bool;
 ParDiSO pardiso_var(-2,0);
 
+
+timing eltime;
+double t_total  = 0.0;
+double t_readBD = 0.0;
+double t_final  = 0.0;
+
+double totalMPI  = 0.0, total_1  = 0.0;
+double finalMPI  = 0.0, final_1  = 0.0;
+double readBDMPI = 0.0, readBD_1 = 0.0;
+
+
+
 int main(int argc, char **argv) {
     int info, i, j, pcol;
     double *D, *AB_sol, *InvD_T_Block, *XSrow;
@@ -70,6 +83,8 @@ int main(int argc, char **argv) {
     //BLACS is the interface used by PBLAS and ScaLAPACK on top of MPI
 
     blacs_pinfo_ ( &iam,&size ); 				//determine the number of processes involved
+    
+
     info=MPI_Dims_create ( size, 2, dims );			//determine the best 2D cartesian grid with the number of processes
     if ( info != 0 ) {
         printf ( "Error in MPI creation of dimensions: %d\n",info );
@@ -156,7 +171,33 @@ int main(int argc, char **argv) {
             return EXIT_FAILURE;
         }
 
+
+        // *** TICK ***
+        if (iam == 0)
+        {
+            eltime.tick(t_total);
+            totalMPI = MPI_Wtime();
+        }
+        // ************
+
+
+        // *** TICK ***
+        if (iam == 0)
+        {
+            eltime.tick(t_readBD);
+            readBDMPI = MPI_Wtime();
+        }
+        // ************
+
         read_in_BD ( DESCD,D, BT_i, B_j, Btsparse ) ;
+
+        // *** TACK ***
+        if (iam == 0)
+        {
+            eltime.tack(t_readBD);
+            readBDMPI = MPI_Wtime() - readBDMPI;
+        }
+        // ************
 
         blacs_barrier_ ( &ICTXT2D,"ALL" );
         if (iam==0)
@@ -164,7 +205,9 @@ int main(int argc, char **argv) {
 
         //Now every process has to read in the sparse matrix A
 
-        Asparse.loadFromFile(filenameA);
+        Asparse.loadFromFileSym(filenameA);
+        Asparse.matrixType = SYMMETRIC;
+
 	assert(Asparse.nrows == Adim);
 	assert(Asparse.ncols == Adim);
 
@@ -210,7 +253,7 @@ int main(int argc, char **argv) {
                     /*MPI_Get_count(&status, MPI_INT, &count);
                     printf("Process 0 received %d elements of process %d\n",count,i);*/
                     if(nonzeroes>0) {
-                        //printf("Nonzeroes : %d\n ",nonzeroes);
+                        printf("Nonzeroes : %d\n ",nonzeroes);
                         Dblock.allocate ( Dblocks * blocksize,Dblocks * blocksize,nonzeroes );
                         MPI_Recv ( & ( Dblock.pRows[0] ), Dblocks * blocksize + 1, MPI_INT,i,i+size,MPI_COMM_WORLD,&status );
                         /*MPI_Get_count(&status, MPI_INT, &count);
@@ -226,14 +269,13 @@ int main(int argc, char **argv) {
                     }
                 }
                 //Dmat.writeToFile("D_sparse.csr");
-                Dmat.nrows=Ddim;
-		Dmat.ncols=Ddim;
-		Dmat.pRows=(int *) realloc(Dmat.pRows,(Ddim+1) * sizeof(int));
                 printf("Number of nonzeroes in D: %d\n",Dmat.nonzeros);
                 Dmat.reduceSymmetric();
 		
                 Btsparse.transposeIt(1);
-		
+		Dmat.nrows=Ddim;
+		Dmat.ncols=Ddim;
+		Dmat.pRows=(int *) realloc(Dmat.pRows,(Ddim+1) * sizeof(int));
                 create2x2SymBlockMatrix(Asparse,Btsparse, Dmat, Csparse);
                 Btsparse.clear();
                 Dmat.clear();
@@ -246,6 +288,7 @@ int main(int argc, char **argv) {
         }
         
         blacs_barrier_(&ICTXT2D,"A");
+        
 
         //AB_sol will contain the solution of A*X=B, distributed across the process rows. Processes in the same process row possess the same part of AB_sol
         DESCAB_sol= ( int* ) malloc ( DLEN_ * sizeof ( int ) );
@@ -264,14 +307,14 @@ int main(int argc, char **argv) {
 
         // Each process calculates the Schur complement of the part of D at its disposal. (see src/schur.cpp)
         // The solution of A * X = B_j is stored in AB_sol (= A^-1 * B_j)
-	//ParDiSO pardiso_var(-2, 1);
         make_Sij_parallel_denseB ( Asparse, BT_i, B_j, D, lld_D, AB_sol );
 	
-	if(iam !=0){
+	if(iam !=0)
+        {
 	  Asparse.clear();
-	  pardiso_var.clear();
-	}
-	
+          pardiso_var.clear();
+        }
+
 	BT_i.clear();
 	B_j.clear();
 
@@ -334,6 +377,7 @@ int main(int argc, char **argv) {
             int pardiso_mtype=-2;
 
             ParDiSO pardiso ( pardiso_mtype, pardiso_message_level );*/
+            
             int number_of_processors = 1;
             char* var = getenv("OMP_NUM_THREADS");
             if(var != NULL)
@@ -374,11 +418,30 @@ int main(int argc, char **argv) {
 
         blacs_barrier_(&ICTXT2D,"A");
 
+
+        // *** TICK ***
+        if (iam == 0) 
+        {
+            eltime.tick(t_final);
+            finalMPI = MPI_Wtime();
+        }
+        // ***********
+
         //Calculating diagonal elements 1 by 1 of the (0,0)-block of C^-1.
         for (i=1; i<=Adim; ++i) {
             pdsymm_ ("R","U",&i_one,&Ddim,&d_one,D,&i_one,&i_one,DESCD,AB_sol,&i,&i_one,DESCAB_sol,&d_zero,XSrow,&i_one,&i_one,DESCXSROW);
             pddot_(&Ddim,InvD_T_Block+i-1,AB_sol,&i,&i_one,DESCAB_sol,&Adim,XSrow,&i_one,&i_one,DESCXSROW,&i_one);
         }
+
+        // *** TACK ***
+        if (iam == 0)
+        {
+            eltime.tack(t_final);
+            finalMPI = MPI_Wtime() - finalMPI;
+        }
+        // ************
+
+
         blacs_barrier_(&ICTXT2D,"A");
 	
 	if(D!=NULL){
@@ -406,17 +469,66 @@ int main(int argc, char **argv) {
 	  DESCXSROW=NULL;
 	}
 
+
+        // *** TACK ***
+        if (iam == 0) 
+        {
+            eltime.tack(t_total);
+            totalMPI = MPI_Wtime() - totalMPI;
+
+            eltime.reportTimeNeeded("TOTAL TIME   ", t_total);
+            eltime.reportTimeNeeded("READING D & B", t_readBD);
+            eltime.reportTimeNeeded("ELEM. OF A   ", t_final);
+            eltime.reportTimeNeeded("ELAPSED TIME ", t_total-t_final-t_readBD);
+            cout << endl;
+            eltime.reportTimeNeeded("TOTAL TIME   ", totalMPI * 1000);
+            eltime.reportTimeNeeded("READING D & B", readBDMPI * 1000);
+            eltime.reportTimeNeeded("ELEM. OF A   ", finalMPI * 1000);
+            eltime.reportTimeNeeded("ELAPSED TIME ", (totalMPI - readBDMPI - finalMPI)*1000);
+
+
+        }
+        // ************
+
         //Only in the root process we add the diagonal elements of A^-1
-        if (iam ==0) {
-            for(i=0; i<Adim; ++i) {
-                j=Asparse.pRows[i];
+        if (iam ==0) 
+        {
+            for (i = 0; i < Adim; i++) 
+            {
+                j                  = Asparse.pRows[i];
                 *(InvD_T_Block+i) += Asparse.pData[j];
             }
+
+            vector<double> diagonal(Asparse.nrows + Ddim);
+            Asparse.getDiagonal(&diagonal[0]);
+
+            
+            cout << "Extracting diagonals... \n" << endl;
+
+            /*
+            //cout << "Extraction completed by ";
+            for (i = 0; i < Ddim; i++) 
+            {
+                cout << "Extracting row " << i << "/" << Ddim << endl;
+                //cout << setw(3) << std::setfill('0') << int(i*100.0 / (Ddim-1)) << "%" << "\b\b\b\b";
+            
+                diagonal[Asparse.nrows + i] = InvD_T_Block[i*Ddim + i];
+            }
+            cout << endl;
+            */
+
             Asparse.clear();
-            printdense ( Adim+Ddim,1,InvD_T_Block,"diag_inverse_C_parallel.txt" );
+
+            cout << "Saving diagonals... \n" << endl;
+            
+            printdense(Adim+Ddim, 1, InvD_T_Block, "diag_inverse_C_parallel.txt");
+
+            printdense(Adim+Ddim, 1, &diagonal[0], "DiagInverseCParallel.txt");
+            
         }
         
-        if(InvD_T_Block !=NULL){
+        if (InvD_T_Block !=NULL)
+        {
 	  free(InvD_T_Block);
 	  InvD_T_Block=NULL;
 	}
@@ -430,3 +542,4 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+

@@ -10,7 +10,8 @@ void printdense ( int m, int n, double *mat, char *filename ) {
     FILE *fd;
     fd = fopen ( filename,"w" );
     if ( fd==NULL )
-        printf ( "error creating file" );
+        cout << "Error creating " << filename << endl;
+
     int i,j;
     for ( i=0; i<m; ++i ) {
         //fprintf ( fd,"[\t" );

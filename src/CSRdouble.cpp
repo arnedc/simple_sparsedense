@@ -417,6 +417,103 @@ void CSRdouble::loadFromFile(const char* file, ios::openmode mode)
 }
 
 
+
+void CSRdouble::loadFromFileSym(const char* file)
+{
+    fstream fin(file, ios::in);
+
+    cout << "opening file: " << file << " in mode: ";
+    if (!fin.is_open())
+    {
+        cout << "couldn't open file ... " << file << "\n";
+        exit(1);
+    }
+
+
+    cout << " ascii" << std::endl;
+
+    fin >> nrows;
+    fin >> ncols;
+    fin >> nonzeros;
+
+    cout << "nrows:    " << nrows    << std::endl;
+    cout << "ncols:    " << ncols    << std::endl;
+    cout << "nonzeros: " << nonzeros << std::endl;
+
+    pRows = new int[nrows+1];
+    vector<int> vrows(nrows+1);
+    nonzeros = (nonzeros - nrows) / 2 + nrows;
+    pCols = new int[nonzeros];
+    pData = new double[nonzeros];
+
+    int i, j;
+
+    for (i = 0; i < nrows+1; i++)
+    {
+        fin >> vrows[i];
+    }
+
+    double value;
+    int column = 0;
+    vector<int> cols;
+
+    for (i = 0; i < nrows; i++)
+    {
+        for (int index = vrows[i]; index < vrows[i+1]; index++)
+        {
+            fin >> j;
+            cols.push_back(j);
+            
+            if (j >= i)
+            {
+                pCols[column] = j;
+                column++;
+            }
+        }
+
+    }
+      
+
+    column = 0;
+
+    pRows[0] = 0;
+    for (i = 0; i < nrows; i++)
+    {
+        for (int index = vrows[i]; index < vrows[i+1]; index++)
+        {
+            fin >> value;
+                
+            if (cols[index] >= i)
+            {
+                pData[column] = value;
+                column++;
+            }
+        }
+
+        pRows[i+1] = column;
+    }
+
+
+
+
+    fin.close();
+    
+    int i0 = pRows[0];
+    for (int i = 0; i < nrows+1; i++)
+    {
+        pRows[i] -= i0;
+    }
+
+    for (int i = 0; i < nonzeros; i++)
+    {
+        pCols[i] -= i0;
+    }
+
+
+}
+
+
+
 void CSRdouble::loadFromFileCOO(const char* file)
 {
     fstream fin(file, ios::in);
@@ -638,4 +735,53 @@ void CSRdouble::savedebug(const char* filename) const
       }
       fout << "\n";
   }
+  fout.close();
 }
+
+
+
+void CSRdouble::saveDiagonal(const char* filename) const
+{
+  fstream fout(filename, ios::out);
+
+  int i, index, j;
+
+  fout.setf(ios::scientific, ios::floatfield);
+  fout.precision(16);
+
+  for (i = 0; i < nrows; i++)
+  {
+     for (index = pRows[i]; index < pRows[i+1]; index++)
+     {
+         j = pCols[index];
+
+         if (i == j)
+         {
+             fout << pData[index] << endl;
+             break;
+         }
+     }
+  }
+
+  fout.close();
+}
+
+void CSRdouble::getDiagonal(double* diagonal) const
+{
+  int i, index, j;
+
+  for (i = 0; i < nrows; i++)
+  {
+     for (index = pRows[i]; index < pRows[i+1]; index++)
+     {
+         j = pCols[index];
+
+         if (i == j)
+         {
+             diagonal[i] = pData[index];
+             break;
+         }
+     }
+  }
+}
+
