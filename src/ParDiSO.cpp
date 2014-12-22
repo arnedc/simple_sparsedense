@@ -146,6 +146,7 @@ ParDiSO::ParDiSO(int pardiso_mtype, int pardiso_msglvl)
   // --------------------------------------------------------------------
   mtype  = pardiso_mtype;
   msglvl = pardiso_msglvl;
+  msglvl = 0;   // fabio hard-coded
   if(iam == 0)
     msglvl = 1; // fabio hard-coded
   solver = 0;

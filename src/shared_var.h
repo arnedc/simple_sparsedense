@@ -44,7 +44,8 @@ extern "C"{
 }
 
 void printdense ( int m, int n, double *mat, char *filename );
-int read_in_BD ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j, CSRdouble& Btsparse ) ;
+int read_in_BD  ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j, CSRdouble& Btsparse ) ;
+void generate_BD(double* Dmat, CSRdouble& BT_i, CSRdouble& B_j);
 int read_input ( char* filename ) ;
 int make_Sij_sparse_parallel (CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, double* T_ij, int lld_Tij );
 int make_Sij_parallel_denseB(CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, double * T_ij, int lld_T, double* AB_sol) ;

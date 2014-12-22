@@ -11,6 +11,57 @@ extern "C" {
     int blacs_pnum_ ( int *ConTxt, int *prow, int *pcol );
 }
 
+
+void generate_BD(double* Dmat, CSRdouble& BT_i, CSRdouble& B_j)
+{
+
+    if (position[0] == position[1])
+    {
+        genDiagonalD(Dcols*blocksize, (double)Ddim, Dmat);
+    }
+
+
+    int d_BT_i = blocksize*Drows;
+    int d_B_j  = blocksize*Dcols;
+
+
+    if (position[0] == dims[0]-1) // the processor belongs to the last row of the grid...
+    {
+        int exceeding_rows = 0;
+        
+        for (int k = 0; k < dims[0]; k++)
+            exceeding_rows += blocksize * ceil((Dblocks-k)/(double)dims[0]);  // I compute the number of rows stored by all the processors belonging to this row.
+
+        exceeding_rows -= Ddim;             // I compute the number of rows exceeding the real number of rows of B.
+        d_BT_i         -= exceeding_rows;   // I take away the exceeding number of rows from the standard number of rows-per-process (i.e., blocksize*Drows).
+    }
+    
+    if (position[1] == dims[1]-1)
+    {
+        int exceeding_cols = 0;
+
+        for (int k = 0; k < dims[1]; k++)
+            exceeding_cols += blocksize * ceil((Dblocks-k)/(double)dims[1]);
+
+        exceeding_cols -= Ddim;
+        d_B_j          -= exceeding_cols;
+    }
+
+    double* b_j  = new double[Adim*d_B_j];
+    double* bt_i = new double[d_BT_i*Adim];
+
+    genOnes(Adim,   d_B_j, 0.0, b_j);
+    genOnes(d_BT_i, Adim,  0.0, bt_i);
+
+    //for (int k = 0; k < Adim*d_B_j; k++) cout << b_j[k] << "\t";
+
+    dense2CSR(b_j,  Adim,   d_B_j, B_j);
+    dense2CSR(bt_i, d_BT_i, Adim,  BT_i);
+
+}
+
+
+
 int read_in_BD ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j, CSRdouble& Btsparse ) {
 
     FILE *fD;
@@ -20,6 +71,8 @@ int read_in_BD ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j, CS
     MPI_Status status;
     
     pcol= * ( position+1 );
+
+
 
     fD=fopen ( filenameD,"rb" );
     if ( fD==NULL ) {
@@ -108,12 +161,14 @@ int read_in_BD ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j, CS
         // End of read-in
 
         // Matrix B 
+    
     if ( iam!=0 ) {
        
         // Each process receives the necessary BT_i and B_j
         // Blocking sends are used, which is why the order of the receives is critical depending on the coordinates of the process
         int nonzeroes;
-        if (*position >= pcol) {
+        if (*position >= pcol) 
+        {
             MPI_Recv ( &nonzeroes,1,MPI_INT,0,iam,MPI_COMM_WORLD,&status );
             BT_i.allocate ( blocksize*Drows,Adim,nonzeroes );
             MPI_Recv ( & ( BT_i.pRows[0] ),blocksize*Drows + 1, MPI_INT,0,iam + size,MPI_COMM_WORLD,&status );
@@ -184,6 +239,7 @@ int read_in_BD ( int * DESCD, double * Dmat, CSRdouble& BT_i, CSRdouble& B_j, CS
                 //Each process in row i can hold several blocks of contiguous rows of D for which we need the corresponding rows of B_T
                 // Therefore we use the function extendrows to create BT_i (see src/tools.cpp)
                 BT_i.extendrows ( Btsparse, ( i * *dims + rowproc ) * blocksize,blocksize );
+                //cout << "Hi! I am extending my chunk of BT_" << i << " with " << blocksize << " rows starting from " << ( i * *dims + rowproc ) * blocksize << endl; 
             }
             for ( int colproc= ( rowproc==0 ? 1 : 0 ); colproc < * ( dims+1 ); ++colproc ) {
                 int *curpos, rankproc;

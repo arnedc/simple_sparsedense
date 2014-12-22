@@ -4,7 +4,297 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <cassert>
+#include <algorithm>
 #include <cstring>
+
+
+
+
+void genRandDenseSPD(int n, double * A)
+{
+    printf("- Generating a %d-by-%d dense, random SPD matrix... \n", n, n);
+
+    std::srand(time(NULL));
+
+
+    cout << "Matrix generation completed by ";
+
+    for(int i = 0; i < n; i++)
+    {
+        cout << setw(3) << std::setfill('0') << i*100 / (n-1) << "%" << "\b\b\b\b";
+
+        for(int j = 0; j < n; j++)
+        {
+            if(i < j)
+            {
+                double Aij = -std::rand() / (double) RAND_MAX;
+
+                A[i*n + j] = Aij;
+                A[j*n + i] = Aij;
+            }
+        }
+    }
+    cout << endl;
+
+    for(int i = 0; i < n; i++)
+    {
+        double Aii = 0.0;
+
+        for(int j = 0; j < n; j++)
+        {
+            if(j != i)
+                Aii -= A[i*n + j];
+        }
+
+        A[i*n + i] = n + Aii;
+    }
+
+    printf("- Done! \n\n");
+
+}
+
+
+void printDenseDouble(const char* filename, ios::openmode mode, int m, int n, double* dense) 
+{
+
+    cout << "\t---> Dumping matrix to file " << filename << " ... \n" << endl;
+
+    fstream fout(filename, ios::out | mode);
+    if (!fout.is_open())
+    {
+        cout << "could not open file " << filename << " for output\n";
+        return;
+    }
+
+    if (mode == ios::binary)
+    {
+        fout.seekp(0);
+        fout.write((const char*)dense, sizeof(double)*m*n);
+        fout.close();
+    }
+    else
+    {
+        fout.setf(ios::scientific, ios::floatfield);
+        fout.precision(4);
+
+    
+        for (int i = 0; i < m; i++)
+        {
+            for(int j = 0; j < n; j++)
+            {
+                fout << dense[i*n + j] << " ";
+            }
+            fout << "\n";
+        }
+    }
+
+}
+
+
+void makeRandCSRUpper(int n, int densityPerRow, CSRdouble& A)
+{
+
+    printf("- Generating a %d-by-%d sparse, random matrix in CSR format... \n", n, n);
+    
+    vector<int> cols;
+    vector<int> rows(n+1, 0);
+    vector<double> values;
+
+
+    if (densityPerRow < 0.0)
+        densityPerRow = 0.01;
+
+    if (densityPerRow > 1.0)
+        densityPerRow = 1.0;
+
+    std::srand(time(NULL));
+
+    int nnzPerRow = 0;
+
+    for (int i = 0; i < n; i++)                         // FOR EACH ROW...
+    {
+
+        nnzPerRow = densityPerRow * (n-i);
+        if (nnzPerRow < 1)
+            nnzPerRow = 1;                              // This guarantees at least one nonzero in each row.
+
+        vector<int> columns;                            // Column coordinates for the elements in this row.
+        columns.push_back(i);                           // Add entry in the main diagonal;
+
+        for (int index = 1; index < nnzPerRow; index++) // RANDOM NUMBER OF NONZEROS PER ROW...
+        {
+            int p = -1;
+
+            do
+            {
+                p = i + (std::rand() % (n-i));
+            
+            } while (p < i || p > n-1);
+            
+            columns.push_back(p);
+        }
+
+        std::sort(columns.begin(), columns.end());
+
+        std::vector<int>::iterator it;
+        it = std::unique(columns.begin(), columns.end());
+        
+        columns.resize(std::distance(columns.begin(), it));
+
+
+        for (int j = 0; j < columns.size(); j++)
+        {
+            double value = 0.0;
+            do
+            {
+                value = std::rand() / (double)RAND_MAX;
+            
+            } while (value == 0.0);
+            
+            if(j == 0)
+                value = 1.0 + n;    // Attempting to get POSITIVE DEFINITE matrix.
+
+            cols.push_back(columns[j]);
+            values.push_back(value);
+        }
+
+        rows[i+1] = rows[i] + columns.size();
+
+    }
+    cout << endl;
+    
+
+    int nonzeros = values.size();
+    
+    A.allocate(n, n, nonzeros);
+    
+    int* ia   = new int[n+1];
+    int* ja   = new int[nonzeros];
+    double* a = new double[nonzeros];
+
+    std::copy(rows.begin(),   rows.end(),   ia);
+    std::copy(cols.begin(),   cols.end(),   ja);
+    std::copy(values.begin(), values.end(), a);
+    
+    A.make(n, n, nonzeros, ia, ja, a);
+
+    printf("- Done! \n\n");
+
+}
+
+
+
+
+
+void makeRandCSR(int m, int n, int densityPerRow, CSRdouble& A)
+{
+
+    printf("- Generating a %d-by-%d sparse, random matrix... \n", m, n);
+    
+    vector<int> cols;
+    vector<int> rows(m+1, 0);
+    vector<double> values;
+ 
+    if (densityPerRow < 0.0)
+        densityPerRow = 0.01;
+
+    if (densityPerRow > 1.0)
+        densityPerRow = 1.0;
+
+    std::srand(time(NULL));
+
+
+    int nnzPerRow = densityPerRow * n;          
+    if (nnzPerRow < 1)
+        nnzPerRow = 1;                                  // This guarantees at least one nonzero in each row.
+
+    // cout << "Matrix generation completed by ";
+    for (int i = 0; i < m; i++)                         // FOR EACH ROW...
+    {
+        //cout << setw(3) << std::setfill('0') << int(i*100.0 / (m-1)) << "%" << "\b\b\b\b";
+
+        vector<int> columns;                            // Column coordinates for the elements in this row.
+        
+        for (int index = 0; index < nnzPerRow; index++) // RANDOM NUMBER OF NONZEROS PER ROW...
+        {
+            int p = -1;
+
+            do
+            {
+                p = i + (std::rand() % (n-i));
+            
+            } while (p < i || p > n-1);
+            
+            columns.push_back(p);
+        }
+
+        std::sort(columns.begin(), columns.end());
+
+        std::vector<int>::iterator it;
+        it = std::unique(columns.begin(), columns.end());
+        
+        columns.resize(std::distance(columns.begin(), it));
+
+
+        for (int j = 0; j < columns.size(); j++)
+        {
+            double value = 0.0;
+            do
+            {
+                value = std::rand() / (double)RAND_MAX;
+            
+            } while (value == 0.0);
+            
+            cols.push_back(columns[j]);
+            values.push_back(value);
+        }
+
+        rows[i+1] = rows[i] + columns.size();
+
+    }
+    cout << endl;
+    
+
+    int nonzeros = values.size();
+    
+    A.allocate(m, n, nonzeros);
+    
+    int* ia   = new int[m+1];
+    int* ja   = new int[nonzeros];
+    double* a = new double[nonzeros];
+
+    std::copy(rows.begin(),   rows.end(),   ia);
+    std::copy(cols.begin(),   cols.end(),   ja);
+    std::copy(values.begin(), values.end(), a);
+    
+    A.make(m, n, nonzeros, ia, ja, a);
+
+    printf("- Done! \n\n");
+
+}
+
+
+
+void printDense2BIN(int N, double *dense, char* filename)
+{
+
+    cout << "\t---> Dumping matrix to file " << filename << " ... " << endl;
+
+    fstream fout(filename, ios::binary);
+    if (!fout.is_open())
+    {
+        cout << "could not open file " << filename << " for output\n";
+        return;
+    }
+
+    fout.seekp(0);
+    fout.write((const char*)dense, sizeof(double)*N);
+    
+    fout.close();
+
+}
+
+
 
 void printdense ( int m, int n, double *mat, char *filename ) {
     FILE *fd;

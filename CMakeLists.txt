@@ -12,7 +12,7 @@ include_directories(${MPI_INCLUDE_PATH} ${PROJECT_SOURCE_DIR}/src /opt/intel/mkl
 #  CMAKE_FORCE_CXX_COMPILER(mpicxx ${CMAKE_CXX_COMPILER_ID})
 
 aux_source_directory(src helpfunctions)
-add_executable(sparsedense ${helpfunctions} main.cpp)
+add_executable(sparsedense ${helpfunctions} src/main.cpp)
 
 #if(MPI_COMPILE_FLAGS)
 #  set_target_properties(pardiso_seq PROPERTIES

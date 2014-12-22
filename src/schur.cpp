@@ -63,7 +63,8 @@ int make_Sij_parallel_denseB(CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, doub
     double *BT_i_dense;
     
     timing secs;
-    double MultTime       = 0.0;
+    double MultTime  = 0.0;
+    double SchrTime  = 0.0;
 
     assert(A.nrows == BT_i.ncols);
 
@@ -109,7 +110,9 @@ int make_Sij_parallel_denseB(CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, doub
         AB_sol.nrows=B_j.ncols;
         AB_sol.ncols=B_j.ncols;
 
+        secs.tick(SchrTime);                        // TICK
         calculateSchurComplement( W, 11, AB_sol);
+        secs.tack(SchrTime);                        // TACK
 
         W.clear();
 
@@ -131,7 +134,9 @@ int make_Sij_parallel_denseB(CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, doub
         CSR2dense(B_j,B_j_dense);
 	if(iam==0)
 	  printf("Solving systems AX_j = B_j on all processes\n");
-        solveSystem(A, AB_sol_out,B_j_dense, -2, B_j.ncols);
+
+        solveSystem(A, AB_sol_out, B_j_dense, -2, B_j.ncols); // System: A * AB_sol_out = B_j_dense;
+        //          A   *   x    = b,        type,   #RHS
 
         if(B_j_dense!=NULL) {
             free(B_j_dense);
@@ -150,6 +155,8 @@ int make_Sij_parallel_denseB(CSRdouble& A, CSRdouble& BT_i, CSRdouble& B_j, doub
     dgemm_("N","N",&(BT_i.nrows),&(B_j.ncols),&(BT_i.ncols),&d_negone,BT_i_dense,&(BT_i.nrows),
            AB_sol_out,&(A.nrows),&d_one,T_ij,&lld_T);
     secs.tack(MultTime);
+
+    cout << " \n\n *** Time needed for 'calculateSchurComplement': " << SchrTime * 0.001 << " seconds. *** \n" << endl;
     
     if(iam==0)
       cout << "Time for multiplying BT_i and Y_j: " << MultTime * 0.001 << " sec" << endl;

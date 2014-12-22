@@ -34,6 +34,12 @@ void solveManyRhsUsingSchurComplement(CSRdouble& A, int nrhs, int pardiso_mtype)
 
 void makeRhsCSRdoubleMatrix(int number_of_rhs, int n, double* B, CSRdouble& Bmat);
 void makeIdentity(int n, CSRdouble& I);
+void makeDiagonal(int n, double* val, CSRdouble& D);
+void makeDiagonalPerturb(int n, double* val, double pert, CSRdouble& DP);
+void genOnes(int m, int n, double value, double* ones);
+void makeOnes(int m, int n, double value, CSRdouble& E);
+void genDiagonalV(int n, double* value, double* diag);
+void genDiagonalD(int n, double d, double* diag);
 void fillSymmetric(CSRdouble* pmatrix);
 void norm(int n, double* x, double* y);
 

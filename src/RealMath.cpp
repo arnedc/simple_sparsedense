@@ -3,9 +3,9 @@
 #include "timing.hpp"
 #include "CSRdouble.hpp"
 #include "ParDiSO.hpp"
+#include "shared_var.h"
 #include <cassert>
 #include <cstring>
-#include <shared_var.h>
 
 
 void solveSystem(CSRdouble& A, double* X, double* B, int pardiso_mtype, int number_of_rhs)
@@ -75,7 +75,7 @@ void solveSystem(CSRdouble& A, double* X, double* B, int pardiso_mtype, int numb
     cout << "T I M I N G         R E P O R T" << endl;
     cout << "-------------------------------" << endl;
     cout.setf(ios::floatfield, ios::scientific);
-    cout.precision(2);
+    cout.precision(4);
     cout << "Initialization phase: " << initializationTime*0.001 << " sec" << endl;
     cout << "Factorization  phase: " << factorizationTime*0.001 << " sec" << endl;
     cout << "Solution       phase: " << solutionTime*0.001 << " sec" << endl;}
@@ -298,7 +298,7 @@ void solveManyRhsUsingSchurComplement(CSRdouble& A, int nrhs, int pardiso_mtype)
     cout << "T I M I N G         R E P O R T" << endl;
     cout << "-------------------------------" << endl;
     cout.setf(ios::floatfield, ios::scientific);
-    cout.precision(2);
+    cout.precision(4);
     cout << "generatingRhs  phase: " << setw(10) << generateRhsTime*0.001   << " sec" << endl;
     cout << "fillSymTime    phase: " << setw(10) << fillSymTime*0.001       << " sec" << endl;
     cout << "IdentityTime   phase: " << setw(10) << identityTime*0.001      << " sec" << endl;
@@ -858,8 +858,8 @@ void makeIdentity(int n, CSRdouble& I)
     int*    prows = new int[n+1];
     int*    pcols = new int[n];
     double* pdata = new double[n];
-
     prows[0]      = 0;
+
     for (int i = 0; i < n; i++)
     {
         prows[i+1]  = prows[i] + 1;
@@ -870,13 +870,113 @@ void makeIdentity(int n, CSRdouble& I)
     I.make(n, n, n, prows, pcols, pdata);
 }
 
+
+void makeDiagonal(int n, double* val, CSRdouble& D)
+{
+    int*    prows = new int[n+1];
+    int*    pcols = new int[n];
+    double* pdata = new double[n];
+    prows[0]      = 0;
+
+    for (int i = 0; i < n; i++)
+    {
+        prows[i+1]  = prows[i] + 1;
+        pcols[i]    = i;
+        pdata[i]    = val[i];
+    }
+
+    D.make(n, n, n, prows, pcols, pdata);
+}
+
+
+
+void makeDiagonalPerturb(int n, double* val, double pert, CSRdouble& DP)
+{
+    int*    prows = new int[n+2];
+    int*    pcols = new int[n+1];
+    double* pdata = new double[n+1];
+
+    prows[0] = 0;
+    prows[1] = 2;
+    pcols[0] = 0;
+    pcols[1] = 1;
+    pdata[0] = val[0];
+    pdata[1] = pert;
+
+    for (int i = 2; i < n+1; i++)
+    {
+        prows[i] = prows[i-1] + 1;
+        pcols[i] = i-1;
+        pdata[i] = val[i-1];
+    }
+
+    DP.make(n, n, n+1, prows, pcols, pdata);
+
+}
+
+
+void genOnes(int m, int n, double value, double* ones)
+{
+
+    for(int j = 0; j < m*n; j++)
+    {
+        ones[j] = 0.0 + value;
+    }
+
+}
+
+
+void makeOnes(int m, int n, double value, CSRdouble& E)
+{
+    int         N = m*n;
+    int*    prows = new int[N+1];
+    int*    pcols = new int[N];
+    double* pdata = new double[N];
+    prows[0]      = 0;
+
+    for (int i = 0; i < m; i++)
+    {
+        prows[i+1]  = prows[i] + n;
+
+        for (int k = 0; k < n; k++)
+        {
+            pcols[i*n + k] = k;
+            pdata[i*n + k] = 0.0 + value;
+        }
+    }
+
+    E.make(m, n, N, prows, pcols, pdata);
+}
+
+
+void genDiagonalV(int n, double* value, double* diag)
+{
+    for (int k = 0; k < n; k++)
+    {
+        diag[k*n + k] = value[k];
+    }
+
+}
+
+void genDiagonalD(int n, double d, double* diag)
+{
+    for (int k = 0; k < n; k++)
+    {
+        diag[k*n + k] = 0.0 + d;
+    }
+
+}
+
+
 void norm(int n, double* x, double* y)
 {
     double sum = 0.0;
     for (int i = 0; i < n; i++)
     {
-        sum += (x[i] - y[i])*(x[i] - y[i]);
+        sum += (x[i]-y[i]) * (x[i]-y[i]);
     }
 
     cout << std::scientific << std::setprecision(16) << "error between solutions is: " << sqrt(sum) << endl;
 }
+
+
